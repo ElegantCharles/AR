@@ -17,7 +17,6 @@ env/
 
 # Archivos generados por Django
 /staticfiles/
-/media/
 
 # ---- NODE / FRONTEND ----
 node_modules/
@@ -43,4 +42,3 @@ Thumbs.db
 # ---- Otros ----
 *.swp
 *.tmp
-/media/
