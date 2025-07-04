@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · YukiAR{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h2 class="text-3xl font-bold">Mis Proyectos AR</h2>
+  <a href="{% url 'experience_create' %}"
+     class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+    + Crear nueva experiencia
+  </a>
+</div>
+
+<table class="min-w-full bg-white shadow rounded-lg overflow-hidden">
+  <thead class="bg-gray-100">
+    <tr>
+      <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Nombre</th>
+      <th class="px-4 py-2 text-center text-sm font-medium text-gray-600">Targets</th>
+      <th class="px-4 py-2 text-center text-sm font-medium text-gray-600">Assets</th>
+      <th class="px-4 py-2 text-center text-sm font-medium text-gray-600">Vistas</th>
+      <th class="px-4 py-2 text-center text-sm font-medium text-gray-600">Publicado</th>
+      <th class="px-4 py-2 text-center text-sm font-medium text-gray-600">Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for exp in experiences %}
+    <tr class="border-t">
+      <td class="px-4 py-2">{{ exp.name }}</td>
+      <td class="px-4 py-2 text-center">{{ exp.targets.count }}</td>
+      <td class="px-4 py-2 text-center">{{ exp.experienceasset_set.count }}</td>
+      <td class="px-4 py-2 text-center">{{ exp.views }}</td>
+      <td class="px-4 py-2 text-center">
+        {% if exp.is_published %}
+          <span class="text-green-600 font-semibold">Sí</span>
+        {% else %}
+          <span class="text-red-600 font-semibold">No</span>
+        {% endif %}
+      </td>
+      <td class="px-4 py-2 text-center space-x-2">
+        <a href="{% url 'editor' exp.id %}"
+           class="text-indigo-600 hover:underline text-sm">Editar</a>
+        {% if exp.is_published %}
+          <a href="{% url 'viewer' exp.id %}" target="_blank"
+             class="text-blue-600 hover:underline text-sm">Ver</a>
+        {% endif %}
+        <form action="{% url 'experience_delete' exp.id %}" method="post" class="inline">
+          {% csrf_token %}
+          <button type="submit"
+                  onclick="return confirm('¿Eliminar {{ exp.name }}? Esta acción no se puede deshacer')"
+                  class="text-red-600 hover:underline text-sm">Eliminar</button>
+        </form>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">
+      No tienes proyectos aún. ¡Empieza creando uno!
+    </td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

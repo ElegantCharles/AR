@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Eliminar · YukiAR{% endblock %}
+{% block content %}
+  <h2 class="text-2xl font-bold mb-4">Eliminar "{{ experience.name }}"</h2>
+  <p class="mb-6">¿Estás seguro de que quieres borrarlo?</p>
+  <form method="post" class="inline">
+    {% csrf_token %}
+    <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+      Sí, eliminar
+    </button>
+    <a href="{% url 'dashboard' %}" class="text-gray-600 hover:underline ml-4">Cancelar</a>
+  </form>
+{% endblock %}
