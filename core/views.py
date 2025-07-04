@@ -19,7 +19,6 @@ from .serializers import (
     ExperienceAssetSerializer, DetectionMetricSerializer
 )
 
-# ----- Vistas de login/plantillas -----
 
 def login_view(request):
     if request.method == 'POST':
@@ -85,7 +84,7 @@ def viewer_view(request, id):
     exp = get_object_or_404(Experience, pk=id, is_published=True)
     return render(request, 'viewer.html', {'experience': exp})
 
-# ----- APIs con DRF -----
+# APIs con DRF 
 
 class TargetViewSet(viewsets.ModelViewSet):
     queryset = Target.objects.all().order_by('-created_at')
@@ -98,7 +97,7 @@ class TargetViewSet(viewsets.ModelViewSet):
         image_path = target.image.path
         output_dir = os.path.dirname(image_path)
         prefix = os.path.splitext(os.path.basename(image_path))[0]
-        # Ejecutar arjs-cli para generar fset, fset3, iset
+        # Ejecutar arjs-cli para generar fset, fset3, iset - segun documentacion no tocar
         subprocess.run(["npx", "arjs", "generate", image_path, "--output", output_dir])
         # Asignar archivos generados al modelo
         fset_path = os.path.join(output_dir, prefix + '.fset')
@@ -138,12 +137,12 @@ class ExperienceViewSet(viewsets.ModelViewSet):
         total_size = 0
         for ea in exp.experienceasset_set.all():
             total_size += ea.asset.file.size
-        # Limite ejemplo: 50 MB
+        # Limite 50mb
         if total_size > 50 * 1024 * 1024:
             return Response({'error': 'Contenido demasiado grande'}, status=400)
         exp.is_published = True
         exp.save()
-        # Generar HTML estático y código QR
+        # Generar HTML estático y código qr
         html_content = render(None, 'viewer.html', {'experience': exp}).content.decode('utf-8')
         viewer_path = os.path.join(settings.MEDIA_ROOT, f'viewer_{exp.id}.html')
         with open(viewer_path, 'w', encoding='utf-8') as f:
@@ -166,7 +165,7 @@ class DetectionMetricViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         return Response({'status': 'metric saved'}, status=status.HTTP_201_CREATED)
 
-# ----- Funciones de ruta especial -----
+# no se pero fucniona
 
 @api_view(['PATCH'])
 @permission_classes([AllowAny])

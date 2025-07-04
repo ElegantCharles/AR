@@ -2,8 +2,6 @@ import os
 from django.db import models
 from django.utils.text import slugify
 
-# --- Modelos básicos ---
-
 class Target(models.Model):
     name = models.CharField(max_length=100, unique=True)
     image = models.ImageField(upload_to='targets/')
@@ -66,7 +64,7 @@ class ExperienceAsset(models.Model):
     experience = models.ForeignKey(Experience, on_delete=models.CASCADE)
     asset = models.ForeignKey(Asset, on_delete=models.CASCADE)
     target = models.ForeignKey(Target, on_delete=models.CASCADE)
-    transform = models.JSONField(default=dict)  # {'pos':[x,y,z], 'rot':[x,y,z], 'scale':[x,y,z]}
+    transform = models.JSONField(default=dict)  # {'pos':[x,y,z], 'rot':[x,y,z], 'scale':[x,y,z]} NO TOCAR
     autoplay = models.BooleanField(default=False)
     loop = models.BooleanField(default=False)
     face_user = models.BooleanField(default=False)
