@@ -1,0 +1,59 @@
+
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>hola · Visor</title>
+
+  <script src="/static/js/aframe/aframe.min.js"></script>
+  <script src="/static/js/arjs/aframe-ar-nft.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden
+    }
+  </style>
+</head>
+
+<body>
+  <a-scene embedded vr-mode-ui="enabled:false" arjs="sourceType:webcam;debugUIEnabled:false;">
+
+    
+
+    <a-entity camera></a-entity>
+  </a-scene>
+  <script>
+    AFRAME.registerComponent('autofit', {
+      schema: { targetSize: { type: 'number', default: 1 } },   // 1 m
+      init() {
+        this.el.addEventListener('model-loaded', () => {
+          const obj = this.el.getObject3D('mesh');
+          if (!obj) return;
+
+          // Bounding box
+          const box = new THREE.Box3().setFromObject(obj);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+
+          // escala uniforme: targetSize / lado mayor
+          const scale = this.data.targetSize / Math.max(size.x, size.y, size.z);
+          this.el.setAttribute('scale',
+            `${scale} ${scale} ${scale}`);
+
+          // centra en Y (para que “asiente” sobre el marcador)
+          const center = new THREE.Vector3();
+          box.getCenter(center);
+          obj.position.sub(center);          // centra en 0,0,0
+          obj.position.y += size.y / 2;      // apoya sobre el plano
+        });
+      }
+    });
+  </script>
+
+</body>
+
+</html>

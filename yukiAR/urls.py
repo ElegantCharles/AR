@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import TemplateView  
+from django.views.generic import TemplateView
 from core import views as core_views
 
 urlpatterns = [
@@ -23,14 +23,13 @@ urlpatterns = [
     # Admin de Django (opcional)
     path('admin/', admin.site.urls),
 
-    # APIs DRF
-    path('api/', include('core.urls')),
+    # APIs DRF con namespace 'api'
+    path('api/', include(('core.urls', 'api'), namespace='api')),
 
     # Endpoints auxiliares
     path('save_config/<int:id>/', core_views.save_config, name='save_config'),
     path('publish/<int:id>/', core_views.publish_experience, name='publish_experience'),
     path('test-ar/', TemplateView.as_view(template_name='test_ar.html'), name='test_ar'),
-
 ]
 
 if settings.DEBUG:

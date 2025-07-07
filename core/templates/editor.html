@@ -1,74 +1,102 @@
 {% extends "base.html" %}
 {% load static %}
+
 {% block title %}Editor · YukiAR{% endblock %}
 
 {% block content %}
 <h2 class="text-3xl font-bold mb-6">Editor 3D</h2>
 <div class="flex gap-4">
+
   <aside class="w-1/4 bg-white rounded-lg shadow p-4 text-sm space-y-4">
     <h3 class="font-semibold mb-2">Targets & Assets</h3>
     <ul id="tree" class="space-y-1"></ul>
+
     <button id="btn-add-target" class="w-full bg-green-600 hover:bg-green-700 text-white py-1.5 rounded">+ Add Target</button>
-    <button id="btn-del-target" class="w-full bg-red-500 hover:bg-red-600 text-white py-1.5 rounded">– Delete Selected Target</button>
+    <button id="btn-del-target" class="w-full bg-red-500 hover:bg-red-600 text-white py-1.5 rounded">– Delete Target</button>
     <button id="btn-publish" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-1.5 rounded">🚀 Publish Experience</button>
+
     <hr class="my-3">
+
     <h4 class="font-semibold">Global Assets</h4>
     <ul id="global-assets" class="space-y-1 mb-4"></ul>
+
     <button id="btn-add-content" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 rounded">+ Upload Asset</button>
-    <button id="btn-del-asset" class="w-full bg-red-500 hover:bg-red-600 text-white py-1.5 rounded">– Delete Selected Asset</button>
+    <button id="btn-del-asset" class="w-full bg-red-500 hover:bg-red-600 text-white py-1.5 rounded">– Delete Asset</button>
+
     <input type="file" id="file-target" accept="image/*" hidden>
     <input type="file" id="file-asset" hidden>
   </aside>
+
   <div class="flex-1 bg-gray-800 rounded-lg">
     <canvas id="three-canvas" class="w-full h-[500px] rounded-lg"></canvas>
   </div>
+
   <aside class="w-1/4 bg-white rounded-lg shadow p-4 space-y-4 text-sm">
     <h3 class="font-semibold">Propiedades</h3>
-    <div class="grid grid-cols-3 gap-2">
-      <div class="col-span-3 font-medium text-center mb-1">Posición</div>
-      {% for axis in "XYZ" %}
-      <label class="block text-center text-xs">{{ axis }}
-        <input id="pos-{{ axis|lower }}" type="range" min="-5" max="5" step="0.1" class="w-full">
-        <input id="pos-{{ axis|lower }}-num" type="number" min="-5" max="5" step="0.1" class="w-full text-xs mt-1">
-      </label>
-      {% endfor %}
-      <div class="col-span-3 font-medium text-center mt-2">Rotación</div>
-      {% for axis in "XYZ" %}
-      <label class="block text-center text-xs">{{ axis }}
-        <input id="rot-{{ axis|lower }}" type="range" min="0" max="360" step="1" class="w-full">
-        <input id="rot-{{ axis|lower }}-num" type="number" min="0" max="360" step="1" class="w-full text-xs mt-1">
-      </label>
-      {% endfor %}
-      <div class="col-span-3 font-medium text-center mt-2">Escala</div>
-      {% for axis in "XYZ" %}
-      <label class="block text-center text-xs">{{ axis }}
-        <input id="scale-{{ axis|lower }}" type="range" min="0.1" max="5" step="0.01" class="w-full">
-        <input id="scale-{{ axis|lower }}-num" type="number" min="0.1" max="5" step="0.01" class="w-full text-xs mt-1">
-      </label>
-      {% endfor %}
-      <div class="col-span-3 flex justify-between items-center mt-3">
-        <label><input id="autoplay" type="checkbox"> Autoplay</label>
-        <label><input id="loop" type="checkbox"> Loop</label>
+
+    <div>
+      <div class="font-medium">Posición</div>
+      <div class="grid grid-cols-3 gap-2 mt-1">
+        {% for axis in "XYZ" %}
+          <label class="block text-center text-xs">{{ axis }}
+            <input id="pos-{{ axis|lower }}" type="range" min="-5" max="5" step="0.1" class="w-full">
+            <input id="pos-{{ axis|lower }}-num" type="number" min="-5" max="5" step="0.1" class="w-full text-xs mt-1">
+          </label>
+        {% endfor %}
       </div>
+    </div>
+
+    <div class="mt-4">
+      <div class="font-medium">Rotación</div>
+      <div class="grid grid-cols-3 gap-2 mt-1">
+        {% for axis in "XYZ" %}
+          <label class="block text-center text-xs">{{ axis }}
+            <input id="rot-{{ axis|lower }}" type="range" min="0" max="360" step="1" class="w-full">
+            <input id="rot-{{ axis|lower }}-num" type="number" min="0" max="360" step="1" class="w-full text-xs mt-1">
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <div class="font-medium">Escala</div>
+      <div class="grid grid-cols-3 gap-2 mt-1">
+        {% for axis in "XYZ" %}
+          <label class="block text-center text-xs">{{ axis }}
+            <input id="scale-{{ axis|lower }}" type="range" min="0.1" max="5" step="0.01" class="w-full">
+            <input id="scale-{{ axis|lower }}-num" type="number" min="0.1" max="5" step="0.01" class="w-full text-xs mt-1">
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="flex justify-between items-center mt-4">
+      <label><input id="autoplay" type="checkbox"> Autoplay</label>
+      <label><input id="loop" type="checkbox"> Loop</label>
     </div>
   </aside>
 </div>
 
 <script type="importmap">
-{"imports":{"three":"/static/js/three/three.module.js"}}
+{
+  "imports": {
+    "three": "{% static 'js/three/three.module.js' %}"
+  }
+}
 </script>
+
 <script type="module">
   import * as THREE from "three";
-  import { OrbitControls } from "/static/js/three/OrbitControls.js";
-  import { TransformControls } from "/static/js/three/TransformControls.js";
-  import { GLTFLoader } from "/static/js/three/GLTFLoader.js";
+  import { OrbitControls }     from "{% static 'js/three/OrbitControls.js' %}";
+  import { TransformControls } from "{% static 'js/three/TransformControls.js' %}";
+  import { GLTFLoader }        from "{% static 'js/three/GLTFLoader.js' %}";
 
-  window.THREE = THREE;
-  window.OrbitControls = OrbitControls;
+  window.THREE             = THREE;
+  window.OrbitControls     = OrbitControls;
   window.TransformControls = TransformControls;
-  window.GLTFLoader = GLTFLoader;
-  window.EXP_ID = {{ experience_id }};
-
-  import "/static/js/editor.js";
+  window.GLTFLoader        = GLTFLoader;
+  window.EXP_ID            = {{ experience_id }};
 </script>
+
+<script src="{% static 'js/editor.js' %}"></script>
 {% endblock %}

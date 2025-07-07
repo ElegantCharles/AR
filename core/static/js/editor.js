@@ -1,89 +1,83 @@
-// static/js/editor.js
-
-const CSRF = document.cookie
-  .split('; ')
-  .find(cookie => cookie.startsWith('csrftoken='))
-  ?.split('=')[1] || '';
+const CSRF = (document.cookie.split('; ').find(c => c.startsWith('csrftoken=')) || '').split('=')[1] || '';
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
   'X-CSRFToken': CSRF
 };
 
+const $ = id => document.getElementById(id);
+
 document.addEventListener('DOMContentLoaded', () => {
-  const $ = id => document.getElementById(id);
-
-  const canvas     = $('three-canvas');
-  const tree       = $('tree');
+  const canvas = $('three-canvas');
+  const tree = $('tree');
   const fileTarget = $('file-target');
-  const fileAsset  = $('file-asset');
+  const fileAsset = $('file-asset');
   const globalAssets = $('global-assets');
-
   const btnAddTarget = $('btn-add-target');
   const btnDelTarget = $('btn-del-target');
-  const btnAddAsset  = $('btn-add-content');
-  const btnDelAsset  = $('btn-del-asset');
-  const btnPublish   = $('btn-publish');
+  const btnAddAsset = $('btn-add-content');
+  const btnDelAsset = $('btn-del-asset');
+  const btnPublish = $('btn-publish');
 
-  // THREE.js setup
-  const scene    = new THREE.Scene();
-  const camera   = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
 
   scene.add(new THREE.GridHelper(10, 10));
   scene.add(new THREE.AxesHelper(5));
   scene.add(new THREE.AmbientLight(0xffffff, 1));
-
   camera.position.set(0, 2, 5);
 
-  const resize = () => {
-    const width  = canvas.clientWidth || 600;
-    const height = canvas.clientHeight || 400;
-    renderer.setSize(width, height, false);
-    camera.aspect = width / height;
+  function resize() {
+    const w = canvas.clientWidth || 600;
+    const h = canvas.clientHeight || 400;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
-  };
+  }
   window.addEventListener('resize', resize);
   resize();
 
-  const controls   = new OrbitControls(camera, renderer.domElement);
-  const transform  = new TransformControls(camera, renderer.domElement);
-
+  const controls = new OrbitControls(camera, renderer.domElement);
+  const transform = new TransformControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.1;
   controls.addEventListener('change', () => renderer.render(scene, camera));
-
   transform.addEventListener('change', () => renderer.render(scene, camera));
   transform.addEventListener('objectChange', updateInputs);
   scene.add(transform);
 
-  const expId     = window.EXP_ID;
-  const objMap    = new Map();
-  const tgtMap    = new Map();
-  const assetMap  = new Map();
-  let   selected        = null;
-  let   currentTarget   = null;
-  let   selectedAssetId = null;
-  let   planes          = [];
+  const expId = window.EXP_ID;
+  const tgtQP = `experience=${expId}`;
+  const eaQP = `experience=${expId}`;
 
-  // Fetch & render loop
+  const objMap = new Map();
+  const tgtMap = new Map();
+  const assetMap = new Map();
+
+  let selected = null;
+  let currentTarget = null;
+  let selectedAsset = null;
+  let planes = [];
+
+  refreshAll();
+
   function refreshAll() {
     Promise.all([
-      fetch(`/api/targets/?experience=${expId}`).then(r => r.json()).then(renderTargets),
-      fetch(`/api/exp-assets/?experience=${expId}`).then(r => r.json()).then(renderEA),
+      fetch(`/api/targets/?${tgtQP}`).then(r => r.json()).then(renderTargets),
+      fetch(`/api/exp-assets/?${eaQP}`).then(r => r.json()).then(renderEA),
       fetch('/api/assets/').then(r => r.json()).then(renderGlobalAssets)
     ]).catch(console.error);
   }
-  refreshAll();
 
-  // Render targets as both list items + ground planes
-  function renderTargets(targets) {
+  function renderTargets(targets = []) {
     tree.innerHTML = '';
     tgtMap.clear();
     planes.forEach(p => scene.remove(p));
     planes = [];
 
-    const loader = new THREE.TextureLoader();
+    const tLoader = new THREE.TextureLoader();
+
     targets.forEach(t => {
       const li = document.createElement('li');
       li.textContent = t.name;
@@ -91,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
       li.onclick = () => {
         currentTarget = t.id;
         highlight(li);
-        selectedAssetId = null;
+        selectedAsset = null;
       };
       tree.appendChild(li);
       tgtMap.set(t.id, li);
@@ -101,69 +95,79 @@ document.addEventListener('DOMContentLoaded', () => {
         highlight(li);
       }
 
-      const plane = new THREE.Mesh(
-        new THREE.PlaneGeometry(2, 2),
-        new THREE.MeshBasicMaterial({ map: loader.load(abs(t.image)), side: THREE.DoubleSide })
-      );
+      const mat = new THREE.MeshBasicMaterial({
+        map: tLoader.load(abs(t.image)),
+        side: THREE.DoubleSide
+      });
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
       plane.rotation.x = -Math.PI / 2;
       scene.add(plane);
       planes.push(plane);
     });
   }
 
-  // Render experience assets into the scene
-  function renderEA(eas) {
+  function renderEA(eas = []) {
     objMap.forEach(o => scene.remove(o));
     objMap.clear();
 
     const gltfLoader = new GLTFLoader();
-    const texLoader  = new THREE.TextureLoader();
+    const texLoader = new THREE.TextureLoader();
 
     eas.forEach(async ea => {
       if (typeof ea.asset === 'number') {
         ea.asset = await fetch(`/api/assets/${ea.asset}/`).then(r => r.json());
       }
 
+      const t = ea.transform;
       let obj;
-      if (ea.asset.type === 'model') {
-        gltfLoader.load(abs(ea.asset.file), gltf => {
-          gltf.scene.traverse(node => {
-            if (node.isMesh && !node.material.map) {
-              node.material = new THREE.MeshNormalMaterial();
-            }
-          });
-          obj = gltf.scene;
-          finish();
-        });
-      } else {
-        obj = new THREE.Sprite(new THREE.SpriteMaterial({ map: texLoader.load(abs(ea.asset.file)) }));
-        finish();
-      }
 
-      function finish() {
-        applyTransform(obj, ea.transform);
+      const finish = () => {
+        applyTransform(obj, t);
         scene.add(obj);
         objMap.set(ea.id, obj);
 
-        const parentLi = tgtMap.get(ea.target);
-        if (parentLi) {
+        const parent = tgtMap.get(ea.target);
+        if (parent) {
           const li = document.createElement('li');
           li.textContent = '└─ ' + ea.asset.name;
           li.className = 'cursor-pointer';
           li.onclick = () => {
-            selectedAssetId = ea.asset.id;
+            selectedAsset = ea;
             transform.attach(obj);
             selected = obj;
             updateInputs();
           };
-          parentLi.appendChild(li);
+          parent.appendChild(li);
         }
+      };
+
+      if (ea.asset.type === 'model') {
+        const url = abs(ea.asset.file);
+        gltfLoader.load(
+          url,
+          gltf => {
+            gltf.scene.traverse(n => {
+              if (n.isMesh && !n.material.map) n.material = new THREE.MeshNormalMaterial();
+            });
+            obj = gltf.scene;
+            finish();
+          },
+          undefined,
+          err => console.error(`GLTF error (${url})`, err)
+        );
+      } else {
+        const sprMat = new THREE.SpriteMaterial();
+        texLoader.load(
+          abs(ea.asset.file),
+          tex => { sprMat.map = tex; obj = new THREE.Sprite(sprMat); finish(); },
+          undefined,
+          err => console.error('Texture error', err)
+        );
       }
     });
   }
 
-  // Render global asset list
-  function renderGlobalAssets(assets) {
+  function renderGlobalAssets(assets = []) {
     globalAssets.innerHTML = '';
     assetMap.clear();
 
@@ -172,9 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
       li.textContent = a.name;
       li.className = 'cursor-pointer text-gray-600';
       li.onclick = () => {
-        selectedAssetId = a.id;
+        selectedAsset = a;
         assetMap.forEach(n => n.style.background = '');
         li.style.background = '#eef';
+
         if (currentTarget) {
           fetch('/api/exp-assets/', {
             method: 'POST',
@@ -187,8 +192,8 @@ document.addEventListener('DOMContentLoaded', () => {
               transform: { pos: [0, 0, 0], rot: [0, 0, 0], scale: [1, 1, 1] }
             })
           })
-          .then(r => r.json())
-          .then(newEa => renderEA([newEa]));
+            .then(r => r.json())
+            .then(newEa => renderEA([newEa]));
         }
       };
       globalAssets.appendChild(li);
@@ -196,19 +201,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // File inputs
   btnAddTarget.onclick = () => fileTarget.click();
   fileTarget.onchange = () => {
     const file = fileTarget.files[0];
     const fd = new FormData();
-    fd.append('name', file.name.split('.')[0]);
+    fd.append('name', file.name.replace(/\.[^.]+$/, ''));
     fd.append('image', file);
-    fetch('/api/targets/', {
-      method: 'POST',
-      headers: { 'X-CSRFToken': CSRF },
-      credentials: 'same-origin',
-      body: fd
-    }).then(refreshAll);
+
+    fetch('/api/targets/', { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd })
+      .then(r => r.json())
+      .then(t => {
+        return fetch(`/api/experiences/${expId}/`, {
+          method: 'PATCH',
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ targets: [t.id] })
+        });
+      })
+      .then(refreshAll);
   };
 
   btnDelTarget.onclick = () => {
@@ -229,7 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const fd = new FormData();
     fd.append('name', file.name);
     fd.append('file', file);
-    fd.append('type', file.type.split('/')[0]);
+    const kind = file.type.split('/')[0] || (file.name.match(/\.(gltf|glb)$/i) ? 'model' : 'file');
+    fd.append('type', kind);
+
     fetch('/api/assets/', {
       method: 'POST',
       headers: { 'X-CSRFToken': CSRF },
@@ -239,98 +250,90 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   btnDelAsset.onclick = () => {
-    if (!selectedAssetId) return alert('Selecciona un asset');
-    fetch(`/api/assets/${selectedAssetId}/`, {
-      method: 'DELETE',
-      headers: JSON_HEADERS,
-      credentials: 'same-origin'
-    }).then(() => {
-      selectedAssetId = null;
-      refreshAll();
-    });
+    if (!selectedAsset) return alert('Selecciona un asset');
+    const ea = [...objMap.keys()].find(id => selectedAsset.id === selectedAsset.id);
+    if (ea) {
+      fetch(`/api/exp-assets/${ea}/`, {
+        method: 'DELETE',
+        headers: JSON_HEADERS,
+        credentials: 'same-origin'
+      }).then(refreshAll);
+    } else {
+      if (confirm('Eliminar el asset globalmente? Puede afectar otras experiencias.')) {
+        fetch(`/api/assets/${selectedAsset.id}/`, {
+          method: 'DELETE',
+          headers: JSON_HEADERS,
+          credentials: 'same-origin'
+        }).then(refreshAll);
+      }
+    }
   };
 
-  // Publish always uses Pattern Marker
-  btnPublish.addEventListener('click', () => {
-    if (!confirm('¿Publicar esta experiencia?')) return;
-
+  btnPublish.onclick = () => {
+    if (!confirm('¿Publicar esta experiencia en modo NFT?')) return;
     fetch(`/publish/${expId}/`, {
       method: 'POST',
       headers: JSON_HEADERS,
       credentials: 'same-origin',
-      body: JSON.stringify({ marker_type: 'pattern' })
+      body: JSON.stringify({ marker_type: 'nft' })
     })
-      .then(response => {
-        if (!response.ok) throw response;
-        return response.json();
-      })
+      .then(r => r.json())
       .then(data => {
-        alert('Publicado! URL:\n' + data.viewer_url);
+        alert(`Publicado!\n${data.viewer_url}`);
         window.open(data.viewer_url, '_blank');
       })
       .catch(err => {
         console.error(err);
-        err.json?.().then(e => alert(e.error || 'Error al publicar'));
+        alert(err.message || 'Error al publicar');
       });
-  });
+  };
 
-  // Helpers
-  function highlight(element) {
+  function highlight(el) {
     [...tree.children].forEach(n => n.style.background = '');
-    element.style.background = '#eef';
+    el.style.background = '#eef';
   }
 
-  function abs(path) {
-    return path.startsWith('http') ? path : `/media/${path}`;
-  }
+  const abs = p => p.startsWith('http') ? p : `/media/${p}`;
 
-  function applyTransform(obj, t) {
-    obj.position.set(...t.pos);
-    obj.rotation.set(...t.rot.map(THREE.MathUtils.degToRad));
-    obj.scale.set(...t.scale);
+  function applyTransform(o, t) {
+    o.position.set(...t.pos);
+    o.rotation.set(...t.rot.map(THREE.MathUtils.degToRad));
+    o.scale.set(...t.scale);
   }
 
   function syncInputGroup(prefix, deg) {
-    ['x','y','z'].forEach(axis => {
+    ['x', 'y', 'z'].forEach(axis => {
       const slider = $(`${prefix}-${axis}`);
-      const input  = $(`${prefix}-${axis}-num`);
-      if (!slider || !input) return;
+      const input = $(`${prefix}-${axis}-num`);
+      if (!slider) return;
 
-      slider.oninput = () => {
-        input.value = slider.value;
-        if (selected) {
-          let v = parseFloat(slider.value);
-          if (deg) v = THREE.MathUtils.degToRad(v);
-          selected[prefix==='pos'?'position': prefix==='rot'?'rotation':'scale'][axis] = v;
-          renderer.render(scene, camera);
-        }
+      const setter = v => {
+        let val = parseFloat(v);
+        if (deg) val = THREE.MathUtils.degToRad(val);
+        selected[
+          prefix === 'pos' ? 'position' :
+          prefix === 'rot' ? 'rotation' : 'scale'
+        ][axis] = val;
+        renderer.render(scene, camera);
       };
 
-      input.oninput = () => {
-        slider.value = input.value;
-        if (selected) {
-          let v = parseFloat(input.value);
-          if (deg) v = THREE.MathUtils.degToRad(v);
-          selected[prefix==='pos'?'position': prefix==='rot'?'rotation':'scale'][axis] = v;
-          renderer.render(scene, camera);
-        }
-      };
+      slider.oninput = () => { input.value = slider.value; if (selected) setter(slider.value); };
+      input.oninput = () => { slider.value = input.value; if (selected) setter(input.value); };
     });
   }
-  syncInputGroup('pos',   false);
-  syncInputGroup('rot',   true);
+  syncInputGroup('pos', false);
+  syncInputGroup('rot', true);
   syncInputGroup('scale', false);
 
   function updateInputs() {
     if (!selected) return;
-    ['x','y','z'].forEach(axis => {
-      $('pos-'+axis).value = $('pos-'+axis+'-num').value = selected.position[axis].toFixed(2);
-      $('rot-'+axis).value = $('rot-'+axis+'-num').value = THREE.MathUtils.radToDeg(selected.rotation[axis]).toFixed(0);
-      $('scale-'+axis).value = $('scale-'+axis+'-num').value = selected.scale[axis].toFixed(2);
+    ['x', 'y', 'z'].forEach(axis => {
+      $(`pos-${axis}`).value = $(`pos-${axis}-num`).value = selected.position[axis].toFixed(2);
+      $(`rot-${axis}`).value = $(`rot-${axis}-num`).value = THREE.MathUtils.radToDeg(selected.rotation[axis]).toFixed(0);
+      $(`scale-${axis}`).value = $(`scale-${axis}-num`).value = selected.scale[axis].toFixed(2);
     });
   }
 
-  // Auto-save config every 30s
   setInterval(() => {
     fetch(`/save_config/${expId}/`, {
       method: 'PATCH',
@@ -340,7 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }, 30000);
 
-  // Animation loop
   (function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);

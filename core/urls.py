@@ -5,6 +5,8 @@ from .views import (
     ExperienceAssetViewSet, DetectionMetricViewSet
 )
 
+app_name = 'api'
+
 router = DefaultRouter()
 router.register(r'targets', TargetViewSet)
 router.register(r'assets', AssetViewSet)

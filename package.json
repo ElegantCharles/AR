@@ -1,8 +1,29 @@
 {
   "devDependencies": {
+    "@ar-js-org/ar.js": "^3.4.7",
+    "aframe": "^1.4.2",
     "tailwindcss": "^4.1.11"
   },
   "dependencies": {
     "three": "^0.152.2"
-  }
+  },
+  "name": "ar",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ElegantCharles/AR.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ElegantCharles/AR/issues"
+  },
+  "homepage": "https://github.com/ElegantCharles/AR#readme"
 }
